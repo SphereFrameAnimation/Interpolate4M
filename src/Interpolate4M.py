@@ -2,6 +2,7 @@ import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
 from PySide2 import QtCore, QtWidgets, QtGui
 
+#Custom item for tree view
 class TreeItem(QtGui.QStandardItem):
     
     def __init__(self, text, item):
@@ -16,6 +17,7 @@ class TreeItem(QtGui.QStandardItem):
         self.font = QtGui.QFont("Noto Sans", 12, 600, False)
         self.setFont(self.font)
         
+#Custom TreeModel including data to simplify updating the tree on refresh
 class TreeModel(QtGui.QStandardItemModel):
     
     def __init__(self):
@@ -26,24 +28,29 @@ class TreeModel(QtGui.QStandardItemModel):
         self.newList = []
         self.root = self.invisibleRootItem()
 
+#Interpolate4M window
 class Window(QtWidgets.QWidget):
 
     def __init__(self):
         
         super().__init__()
 
+        #Window setup
         self.setWindowFlags(QtGui.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Inbetweener")
         self.resize(500, 500)
         
+        #Window font
         self.font = QtGui.QFont("Noto Sans", 12, 300, False)
         self.setFont(self.font)
         
-        self.selection = None
+        #Callback for updating list on selection change
         self.selCbId = om.MEventMessage.addEventCallback("SelectionChanged", self.updateList)
 
+        #Window layout
         self.windowLayout = QtWidgets.QVBoxLayout(self)
 
+        #Top bar buttons
         self.topLayout = QtWidgets.QHBoxLayout(self)
         self.refreshBtn = QtWidgets.QPushButton("Refresh", self)
         self.refreshBtn.clicked.connect(self.updateList)
@@ -51,52 +58,38 @@ class Window(QtWidgets.QWidget):
         
         self.topLayout.addStretch()
 
+        #Selection tree for selecting objects and animatable plugs
         self.selTree = QtWidgets.QTreeView()
         self.selTree.setMaximumHeight(300)
         self.selTree.setHeaderHidden(True)
         
         self.selTreeModel = TreeModel()
         self.selTreeSel = QtCore.QItemSelectionModel(self.selTreeModel)
-        
-        self.updateList()
                 
         self.selTree.setModel(self.selTreeModel)
         self.selTree.setSelectionModel(self.selTreeSel)
         self.selTree.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         
+        #Slider for setting inbetweens
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.onSliderChange)
         
+        #Add widgets and layouts to main window layout
         self.windowLayout.addLayout(self.topLayout)
         self.windowLayout.addWidget(self.selTree)
         self.windowLayout.addWidget(self.slider)
         self.windowLayout.addStretch()
         
+        #Update the selection tree when window opens
+        self.updateList()
+        
+    #Run when the window is closed to clean up the callback
     def closeEvent(self, event):
         
         om.MMessage.removeCallback(self.selCbId)
-        event.accept()
+        event.accept()         
     
-    def initSelTree(self):
-        
-        self.selTreeRoot = self.selTreeModel.invisibleRootItem()
-        self.selection = om.MGlobal.getActiveSelectionList()
-        selectionIt = om.MItSelectionList(self.selection)
-        for sel in selectionIt:
-            
-            node = sel.getDependNode()
-            
-            if oma.MAnimUtil.isAnimated(node):
-                
-                animObj = TreeItem(node, str(sel.getDagPath()), True)
-                self.selTreeRoot.appendRow(animObj)
-                plugs = oma.MAnimUtil.findAnimatedPlugs(node)
-                
-                for plug in plugs:
-                    
-                    animPlug = TreeItem(plug, str(plug.partialName(useLongNames=True)), True)
-                    animObj.appendRow(animPlug)          
-    
+    #Function for updating the selection tree
     def updateList(self, *args, **kwargs):
         
         #Store old list
@@ -164,11 +157,13 @@ class Window(QtWidgets.QWidget):
             self.selTreeModel.newList.append(item)
         
 
+    #Run when slider's value is changed
     def onSliderChange(self):
         
-        self.func(self.slider.value())   
+        self.doInbetween(self.slider.value())   
         
-    def func(self, val):
+    #Sets the inbetween keyframe
+    def doInbetween(self, val):
     
         time = oma.MAnimControl.currentTime() #current playhead time
         
@@ -176,6 +171,7 @@ class Window(QtWidgets.QWidget):
                 
             item = self.selTreeModel.itemFromIndex(index)
             plug = item.data()
+            
             #Operate on the curve which effects the plug
             curve = oma.MAnimUtil.findAnimation(plug)
             curveFn = oma.MFnAnimCurve(curve[0])
@@ -205,9 +201,9 @@ class Window(QtWidgets.QWidget):
             endV = curveFn.value(end)
                     
             #Calculate inbetween and set resulting key
-            resV = startV + (val/99) * (endV - startV)
+            resV = startV + (val/self.slider.maximum()) * (endV - startV)
             curveFn.addKey(time, resV)
-                
-    
+
+#Construct and show window
 window = Window()
 window.show()
