@@ -36,11 +36,20 @@ class Window(QtWidgets.QWidget):
         self.setWindowTitle("Inbetweener")
         self.resize(500, 500)
         
+        self.font = QtGui.QFont("Noto Sans", 12, 300, False)
+        self.setFont(self.font)
+        
         self.selection = None
-        self.selCbId = om.MEventMessage.addEventCallback("SelectionChanged", self.onSelectionChange)
-        self.animCbId = oma.MAnimMessage.addAnimKeyframeEditCheckCallback(self.onSelectionChange)
+        self.selCbId = om.MEventMessage.addEventCallback("SelectionChanged", self.updateList)
 
         self.windowLayout = QtWidgets.QVBoxLayout(self)
+
+        self.topLayout = QtWidgets.QHBoxLayout(self)
+        self.refreshBtn = QtWidgets.QPushButton("Refresh", self)
+        self.refreshBtn.clicked.connect(self.updateList)
+        self.topLayout.addWidget(self.refreshBtn)
+        
+        self.topLayout.addStretch()
 
         self.selTree = QtWidgets.QTreeView()
         self.selTree.setMaximumHeight(300)
@@ -49,7 +58,7 @@ class Window(QtWidgets.QWidget):
         self.selTreeModel = TreeModel()
         self.selTreeSel = QtCore.QItemSelectionModel(self.selTreeModel)
         
-        self.refreshSelection()
+        self.updateList()
                 
         self.selTree.setModel(self.selTreeModel)
         self.selTree.setSelectionModel(self.selTreeSel)
@@ -58,6 +67,7 @@ class Window(QtWidgets.QWidget):
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.onSliderChange)
         
+        self.windowLayout.addLayout(self.topLayout)
         self.windowLayout.addWidget(self.selTree)
         self.windowLayout.addWidget(self.slider)
         self.windowLayout.addStretch()
@@ -65,7 +75,6 @@ class Window(QtWidgets.QWidget):
     def closeEvent(self, event):
         
         om.MMessage.removeCallback(self.selCbId)
-        om.MMessage.removeCallback(self.animCbId)
         event.accept()
     
     def initSelTree(self):
@@ -87,12 +96,8 @@ class Window(QtWidgets.QWidget):
                     
                     animPlug = TreeItem(plug, str(plug.partialName(useLongNames=True)), True)
                     animObj.appendRow(animPlug)          
-
-    def onSelectionChange(self, *args, **kwargs):
-        
-        self.refreshSelection()
     
-    def refreshSelection(self):
+    def updateList(self, *args, **kwargs):
         
         #Store old list
         self.selTreeModel.oldList = self.selTreeModel.newList[:]
