@@ -135,7 +135,8 @@ class Window(QtWidgets.QWidget):
             
             for obj in om.MItSelectionList(selection):
                 
-                if obj.getDependNode() == item.data():
+                node = obj.getDependNode()
+                if node == item.data() and oma.MAnimUtil.isAnimated(node):
                     
                     contains = True
                     break
