@@ -82,13 +82,26 @@ class Window(QtWidgets.QWidget):
         self.selTree.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         
         #Slider for setting inbetweens
+        self.sliderLayout = QtWidgets.QHBoxLayout(self)
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.slider.setMaximum(100)
         self.slider.valueChanged.connect(self.onSliderChange)
+
+        self.sliderBox = QtWidgets.QDoubleSpinBox(self)
+        self.sliderBox.setMinimum(0.0)
+        self.sliderBox.setMaximum(1.0)
+        self.sliderBox.setSingleStep(0.05)
+        self.sliderBox.setMinimumWidth(75)
+        self.sliderBox.setAlignment(QtCore.Qt.AlignCenter)
+        self.sliderBox.valueChanged.connect(self.onSliderBoxChange)
+        
+        self.sliderLayout.addWidget(self.slider)
+        self.sliderLayout.addWidget(self.sliderBox)
         
         #Add widgets and layouts to main window layout
         self.windowLayout.addLayout(self.topLayout)
         self.windowLayout.addWidget(self.selTree)
-        self.windowLayout.addWidget(self.slider)
+        self.windowLayout.addLayout(self.sliderLayout)
         self.windowLayout.addStretch()
         
         #Update the selection tree when window opens
@@ -172,7 +185,18 @@ class Window(QtWidgets.QWidget):
     #Run when slider's value is changed
     def onSliderChange(self):
         
-        self.doInbetween(self.slider.value())   
+        self.sliderBox.blockSignals(True)
+        self.sliderBox.setValue(self.slider.value() / self.slider.maximum())
+        self.sliderBox.blockSignals(False)
+        self.doInbetween(self.slider.value())
+        
+    #Run when slider box's value is changed
+    def onSliderBoxChange(self):
+        
+        self.slider.blockSignals(True)
+        self.slider.setValue(int(self.sliderBox.value() * self.slider.maximum()))
+        self.slider.blockSignals(False)
+        self.doInbetween(self.slider.value())
         
     #Sets the inbetween keyframe
     def doInbetween(self, val):
