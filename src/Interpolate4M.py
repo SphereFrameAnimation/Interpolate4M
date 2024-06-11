@@ -2,6 +2,17 @@ import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
 from PySide2 import QtCore, QtWidgets, QtGui
 
+#Get maya main window
+mayaApp = QtWidgets.QApplication.instance()
+mainWindow = 0
+
+for qw in mayaApp.topLevelWidgets():
+    
+    if(qw.objectName() == "MayaWindow"):
+        
+        mainWindow = qw
+        break
+
 #Custom item for tree view
 class TreeItem(QtGui.QStandardItem):
     
@@ -33,10 +44,10 @@ class Window(QtWidgets.QWidget):
 
     def __init__(self):
         
-        super().__init__()
+        super().__init__(mainWindow)
 
         #Window setup
-        self.setWindowFlags(QtGui.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtGui.Qt.Window)
         self.setWindowTitle("Inbetweener")
         self.resize(500, 500)
         
@@ -206,5 +217,7 @@ class Window(QtWidgets.QWidget):
             curveFn.addKey(time, resV)
 
 #Construct and show window
-window = Window()
-window.show()
+if mainWindow != 0:
+    
+    window = Window()
+    window.show()
