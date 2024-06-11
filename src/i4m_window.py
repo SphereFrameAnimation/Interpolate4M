@@ -1,6 +1,7 @@
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
 from PySide2 import QtCore, QtWidgets, QtGui
+from src.i4m_util import AnimCacheHolder
 
 #Get maya main window
 mayaApp = QtWidgets.QApplication.instance()
@@ -86,6 +87,8 @@ class Window(QtWidgets.QWidget):
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.slider.setMaximum(100)
         self.slider.valueChanged.connect(self.onSliderChange)
+        self.slider.sliderPressed.connect(self.startCache)
+        self.slider.sliderReleased.connect(self.endCache)
 
         self.sliderBox = QtWidgets.QDoubleSpinBox(self)
         self.sliderBox.setMinimum(0.0)
@@ -181,7 +184,15 @@ class Window(QtWidgets.QWidget):
             self.selTreeModel.root.appendRow(item)
             self.selTreeModel.newList.append(item)
         
-
+    def startCache(self, *args, **kwargs):
+        
+        self.animCache = oma.MAnimCurveChange()
+        
+    def endCache(self, *args, **kwargs):
+        
+        AnimCacheHolder.setAnimCache(self.animCache)
+        om.MGlobal.executeCommandOnIdle("i4m_cmd")
+    
     #Run when slider's value is changed
     def onSliderChange(self):
         
@@ -196,7 +207,10 @@ class Window(QtWidgets.QWidget):
         self.slider.blockSignals(True)
         self.slider.setValue(int(self.sliderBox.value() * self.slider.maximum()))
         self.slider.blockSignals(False)
+        
+        self.startCache()
         self.doInbetween(self.slider.value())
+        self.endCache()
         
     #Sets the inbetween keyframe
     def doInbetween(self, val):
@@ -238,7 +252,7 @@ class Window(QtWidgets.QWidget):
                     
             #Calculate inbetween and set resulting key
             resV = startV + (val/self.slider.maximum()) * (endV - startV)
-            curveFn.addKey(time, resV)
+            curveFn.addKey(time, resV, change=self.animCache)
 
 #Construct and show window
 if mainWindow != 0:
