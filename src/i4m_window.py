@@ -49,7 +49,7 @@ class Window(QtWidgets.QWidget):
 
         #Window setup
         self.setWindowFlags(QtGui.Qt.Window)
-        self.setWindowTitle("Inbetweener")
+        self.setWindowTitle("Interpolate4M")
         self.resize(500, 500)
         
         #Window font
