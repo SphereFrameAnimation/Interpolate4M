@@ -139,20 +139,20 @@ class Window(QtWidgets.QWidget):
             
                 for item in self.selTreeModel.oldList:
                 
-                    if item.data() == node:
+                    if item.data()[0] == node:
                     
                         contains = True
                         break
                 
                 if not contains:
                 
-                    animObj = TreeItem(str(nodeFn.name()), node)
+                    animObj = TreeItem(str(nodeFn.name()), (node, True))
                     
                     plugs = oma.MAnimUtil.findAnimatedPlugs(node)
                     
                     for plug in plugs:
                         
-                        animObj.appendRow(TreeItem(plug.partialName(useLongNames=True), plug))
+                        animObj.appendRow(TreeItem(plug.partialName(useLongNames=True), (plug, False)))
 
                     addList.append(animObj)
             
@@ -163,7 +163,7 @@ class Window(QtWidgets.QWidget):
             for obj in om.MItSelectionList(selection):
                 
                 node = obj.getDependNode()
-                if node == item.data() and oma.MAnimUtil.isAnimated(node):
+                if node == item.data()[0] and oma.MAnimUtil.isAnimated(node):
                     
                     contains = True
                     break
@@ -193,6 +193,10 @@ class Window(QtWidgets.QWidget):
         AnimCacheHolder.setAnimCache(self.animCache)
         om.MGlobal.executeCommandOnIdle("i4m_cmd")
     
+    def treeSelectionChanged(self):
+        
+        self.selTreeSel.selection()
+
     #Run when slider's value is changed
     def onSliderChange(self):
         
@@ -220,39 +224,48 @@ class Window(QtWidgets.QWidget):
         for index in self.selTreeSel.selectedIndexes():
                 
             item = self.selTreeModel.itemFromIndex(index)
-            plug = item.data()
+            plugs = [item.data()[0]]
+            if item.data()[1]:
+                
+                plugs = []
+
+                for i in range(item.rowCount()):
+                    
+                    plugs.append(item.child(i).data()[0])
             
-            #Operate on the curve which effects the plug
-            curve = oma.MAnimUtil.findAnimation(plug)
-            curveFn = oma.MFnAnimCurve(curve[0])
+            for plug in plugs:
                 
-            start = 0
-            end = 0
-            index = curveFn.findClosest(time)
+                #Operate on the curve which effects the plug
+                curve = oma.MAnimUtil.findAnimation(plug)
+                curveFn = oma.MFnAnimCurve(curve[0])
+                
+                start = 0
+                end = 0
+                index = curveFn.findClosest(time)
             
-            #Calculate which keyframe the playhead is closest to
-            if curveFn.input(index) < time:
+                #Calculate which keyframe the playhead is closest to
+                if curveFn.input(index) < time:
                     
-                start = index
-                end = index + 1
+                    start = index
+                    end = index + 1
                 
-            elif curveFn.input(index) > time:
+                elif curveFn.input(index) > time:
                 
-                start = index - 1
-                end = index
+                    start = index - 1
+                    end = index
                         
-            else:
+                else:
                         
-                start = index - 1
-                end = index + 1
+                    start = index - 1
+                    end = index + 1
                     
-            #Get the value of the start and end frame
-            startV = curveFn.value(start)
-            endV = curveFn.value(end)
+                #Get the value of the start and end frame
+                startV = curveFn.value(start)
+                endV = curveFn.value(end)
                     
-            #Calculate inbetween and set resulting key
-            resV = startV + (val/self.slider.maximum()) * (endV - startV)
-            curveFn.addKey(time, resV, change=self.animCache)
+                #Calculate inbetween and set resulting key
+                resV = startV + (val/self.slider.maximum()) * (endV - startV)
+                curveFn.addKey(time, resV, change=self.animCache)
 
 #Construct and show window
 if mainWindow != 0:
